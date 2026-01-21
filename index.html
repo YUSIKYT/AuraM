@@ -2,11 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Запрет масштабирования для мобильных устройств -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>auraM | Elite Network</title>
-    
-    <!-- Скрипты для работы React и компонентов (CDN совместимы с GitHub Pages) -->
+    <title>auraM | Final Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -15,420 +12,215 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        body {
-            background-color: #020202;
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            touch-action: pan-x pan-y;
-        }
+        body { background-color: #020202; color: #ffffff; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; touch-action: pan-x pan-y; }
         .syncopate { font-family: 'Syncopate', sans-serif; }
-        
-        .glass-panel { 
-            background: #0a0a0a; 
-            backdrop-filter: blur(40px); 
-            border-right: 1px solid rgba(255, 255, 255, 0.05); 
-        }
-        
-        .aura-card { 
-            background: rgba(255, 255, 255, 0.04); 
-            border: 1px solid rgba(255, 255, 255, 0.06); 
-        }
-        
-        /* Предотвращение зума: шрифт 16px для всех полей ввода */
-        input, textarea, select {
-            font-size: 16px !important;
-        }
-        
+        .glass-panel { background: #0a0a0a; backdrop-filter: blur(40px); border-right: 1px solid rgba(255, 255, 255, 0.05); }
+        .aura-card { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); }
+        input { font-size: 16px !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background: #6366f1; 
-            border-radius: 10px; 
-        }
-        
-        .msg-out {
-            background: #6366f1;
-            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
-        }
-
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+        .msg-out { background: #6366f1; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2); }
         .fade-up { animation: fadeUp 0.4s ease-out forwards; }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Firebase SDK (обязательно для облачного сохранения) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-
-        window.FB = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs, where };
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        
-        // Данные конфигурации
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'auram-messenger';
 
         const App = () => {
             const [db, setDb] = useState(null);
-            const [auth, setAuth] = useState(null);
-            const [user, setUser] = useState(null);
             const [profile, setProfile] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [configError, setConfigError] = useState(false);
+            
+            // Основные состояния интерфейса
             const [authMode, setAuthMode] = useState('login');
             const [form, setForm] = useState({ username: '', password: '', name: '' });
-            const [authError, setAuthError] = useState('');
-            
             const [chats, setChats] = useState([]);
             const [activeChat, setActiveChat] = useState(null);
             const [messages, setMessages] = useState([]);
             const [inputText, setInputText] = useState('');
-            const [settingsOpen, setSettingsOpen] = useState(false);
-            const [localAccounts, setLocalAccounts] = useState([]);
-
             const [searchQuery, setSearchQuery] = useState('');
             const [searchResults, setSearchResults] = useState([]);
             const [isSearching, setIsSearching] = useState(false);
-
+            const [settingsOpen, setSettingsOpen] = useState(false);
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
-                if (window.FB) {
-                    const app = window.FB.initializeApp(firebaseConfig);
-                    const _auth = window.FB.getAuth(app);
-                    const _db = window.FB.getFirestore(app);
-                    setDb(_db);
-                    setAuth(_auth);
-
-                    const initAuth = async () => {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await window.FB.signInWithCustomToken(_auth, __initial_auth_token);
-                        } else {
-                            await window.FB.signInAnonymously(_auth);
+                const init = async () => {
+                    try {
+                        // Исправление для GitHub: если переменной нет, берем пустой объект или выводим ошибку
+                        const cfgStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+                        if (!cfgStr) {
+                            setConfigError(true);
+                            setLoading(false);
+                            return;
                         }
-                    };
-                    initAuth();
 
-                    window.FB.onAuthStateChanged(_auth, (u) => {
-                        setUser(u);
+                        const config = JSON.parse(cfgStr);
+                        const appId = typeof __app_id !== 'undefined' ? __app_id : 'auram-app';
+                        window.currentAppId = appId;
+
+                        const app = window.FB.initializeApp(config);
+                        const auth = window.FB.getAuth(app);
+                        const _db = window.FB.getFirestore(app);
+                        setDb(_db);
+
+                        await window.FB.signInAnonymously(auth);
+                        window.FB.onAuthStateChanged(auth, (u) => {
+                            const activeId = localStorage.getItem('auram_active_id');
+                            if (activeId) fetchProfile(activeId, _db);
+                            setLoading(false);
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        setConfigError(true);
                         setLoading(false);
-                    });
-                }
-
-                const saved = JSON.parse(localStorage.getItem('auram_accounts_final') || '[]');
-                setLocalAccounts(saved);
-                const activeId = localStorage.getItem('auram_active_id');
-                if (activeId && window.FB) fetchProfile(activeId, window.FB.getFirestore(window.FB.initializeApp(firebaseConfig)));
+                    }
+                };
+                init();
             }, []);
 
-            // Логика поиска по ID или Нику
-            useEffect(() => {
-                const performSearch = async () => {
-                    if (searchQuery.length < 2) {
-                        setSearchResults([]);
-                        return;
-                    }
-                    setIsSearching(true);
-                    try {
-                        const usersRef = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'users');
-                        const uSnap = await window.FB.getDocs(usersRef);
-                        const users = uSnap.docs
-                            .map(d => ({ ...d.data(), type: 'user' }))
-                            .filter(u => 
-                                u.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                u.name.toLowerCase().includes(searchQuery.toLowerCase())
-                            );
-
-                        const chatsRef = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chats');
-                        const cSnap = await window.FB.getDocs(chatsRef);
-                        const chatsFound = cSnap.docs
-                            .map(d => ({ id: d.id, ...d.data(), type: 'chat' }))
-                            .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-                        setSearchResults([...users, ...chatsFound]);
-                    } catch (e) { console.error(e); }
-                    setIsSearching(false);
-                };
-
-                const delay = setTimeout(performSearch, 500);
-                return () => clearTimeout(delay);
-            }, [searchQuery, db]);
-
             const fetchProfile = async (id, _db) => {
-                const snap = await window.FB.getDoc(window.FB.doc(_db, 'artifacts', appId, 'public', 'data', 'users', id));
+                const snap = await window.FB.getDoc(window.FB.doc(_db, 'artifacts', window.currentAppId, 'public', 'data', 'users', id));
                 if (snap.exists()) setProfile(snap.data());
             };
 
-            const handleAuthSubmit = async (e) => {
+            const handleAuth = async (e) => {
                 e.preventDefault();
-                setAuthError('');
                 const id = form.username.toLowerCase().trim();
-                if (!id || !db) return;
-
-                const userRef = window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'users', id);
-
+                const userRef = window.FB.doc(db, 'artifacts', window.currentAppId, 'public', 'data', 'users', id);
+                
                 if (authMode === 'register') {
-                    const snap = await window.FB.getDoc(userRef);
-                    if (snap.exists()) return setAuthError('ID уже занят');
-                    const newAcc = {
-                        id, name: form.name, username: id, password: form.password,
-                        avatar: `https://ui-avatars.com/api/?name=${form.name}&background=6366f1&color=fff`,
-                        createdAt: Date.now()
-                    };
-                    await window.FB.setDoc(userRef, newAcc);
-                    updateLocalList(newAcc);
-                    setProfile(newAcc);
+                    const acc = { id, name: form.name, password: form.password, avatar: `https://ui-avatars.com/api/?name=${form.name}&background=6366f1&color=fff` };
+                    await window.FB.setDoc(userRef, acc);
+                    setProfile(acc);
                 } else {
                     const snap = await window.FB.getDoc(userRef);
-                    if (!snap.exists() || snap.data().password !== form.password) return setAuthError('Ошибка доступа');
-                    updateLocalList(snap.data());
-                    setProfile(snap.data());
+                    if (snap.exists() && snap.data().password === form.password) setProfile(snap.data());
                 }
-            };
-
-            const updateLocalList = (acc) => {
-                const saved = JSON.parse(localStorage.getItem('auram_accounts_final') || '[]');
-                const filtered = saved.filter(a => a.id !== acc.id);
-                const newList = [...filtered, acc];
-                setLocalAccounts(newList);
-                localStorage.setItem('auram_accounts_final', JSON.stringify(newList));
-                localStorage.setItem('auram_active_id', acc.id);
-            };
-
-            const startPrivateChat = async (targetUser) => {
-                if (targetUser.id === profile.id) return;
-                const chatId = [profile.id, targetUser.id].sort().join('_');
-                const chatData = {
-                    id: chatId,
-                    name: targetUser.name,
-                    image: targetUser.avatar,
-                    members: [profile.id, targetUser.id],
-                    isPublic: false
-                };
-                await window.FB.setDoc(window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'chats', chatId), chatData);
-                setActiveChat(chatData);
-                setSearchQuery('');
+                localStorage.setItem('auram_active_id', id);
             };
 
             useEffect(() => {
-                if (!profile || !db) return;
-                return window.FB.onSnapshot(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chats'), (snap) => {
-                    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setChats(all.filter(c => c.members?.includes(profile.id) || c.isPublic));
+                if (!db || !profile) return;
+                return window.FB.onSnapshot(window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'chats'), (snap) => {
+                    setChats(snap.docs.map(d => ({id: d.id, ...d.data()})).filter(c => c.isPublic || c.members?.includes(profile.id)));
                 });
-            }, [profile, db]);
+            }, [db, profile]);
 
             useEffect(() => {
-                if (!activeChat || !db) return;
-                const q = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+                if (!db || !activeChat) return;
+                const q = window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'messages');
                 return window.FB.onSnapshot(q, (snap) => {
-                    const filtered = snap.docs
-                        .map(d => ({ id: d.id, ...d.data() }))
-                        .filter(m => m.chatId === activeChat.id)
-                        .sort((a, b) => a.timestamp - b.timestamp);
-                    setMessages(filtered);
-                }, (err) => console.error("Firestore error:", err));
-            }, [activeChat, db]);
+                    setMessages(snap.docs.map(d => ({id: d.id, ...d.data()})).filter(m => m.chatId === activeChat.id).sort((a,b) => a.timestamp - b.timestamp));
+                });
+            }, [db, activeChat]);
 
             useEffect(() => { 
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                 if (window.lucide) window.lucide.createIcons();
-            }, [messages, activeChat, settingsOpen, profile, loading, searchResults]);
+            });
 
-            const onSend = async () => {
-                if (!inputText.trim() || !activeChat || !db) return;
-                await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
-                    chatId: activeChat.id, senderId: profile.id, senderName: profile.name,
-                    content: inputText, timestamp: Date.now()
-                });
-                setInputText('');
-            };
-
-            if (loading) return (
-                <div className="h-screen bg-[#020202] flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 border-t-2 border-indigo-600 rounded-full animate-spin"></div>
+            if (configError) return (
+                <div className="h-screen flex items-center justify-center bg-black p-10 text-center">
+                    <div className="max-w-md">
+                        <h1 className="text-red-500 text-2xl font-bold mb-4">ОШИБКА КОНФИГУРАЦИИ</h1>
+                        <p className="text-gray-400 text-sm">Вы открыли файл напрямую или на GitHub без настройки Firebase. Для работы чата необходимо вставить Firebase Config в код.</p>
+                    </div>
                 </div>
             );
 
-            if (!profile) {
-                return (
-                    <div className="fixed inset-0 bg-[#020202] text-white flex items-center justify-center p-6">
-                        <div className="w-full max-w-md fade-up">
-                            <div className="text-center mb-8">
-                                <h1 className="text-6xl font-black italic tracking-tighter syncopate">auraM</h1>
-                                <p className="text-indigo-400 font-bold uppercase tracking-[0.4em] text-[9px] mt-2">Elite Node Access</p>
-                            </div>
-                            <form onSubmit={handleAuthSubmit} className="bg-[#0a0a0a] p-8 rounded-[2.5rem] border border-white/5 space-y-4 shadow-2xl">
-                                {authMode === 'register' && (
-                                    <input required placeholder="Имя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, name: e.target.value})} />
-                                )}
-                                <input required placeholder="ID пользователя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, username: e.target.value})} />
-                                <input required type="password" placeholder="Пароль" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, password: e.target.value})} />
-                                <button className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-lg hover:bg-indigo-500 active:scale-95 transition-all">
-                                    {authMode === 'login' ? 'ВОЙТИ' : 'СОЗДАТЬ'}
-                                </button>
-                                {authError && <p className="text-red-500 text-[10px] text-center font-bold uppercase">{authError}</p>}
-                            </form>
-                            <p onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-center mt-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest cursor-pointer hover:text-white transition-all">
-                                {authMode === 'login' ? 'Регистрация' : 'Авторизация'}
-                            </p>
-                        </div>
+            if (loading) return <div className="h-screen bg-black flex items-center justify-center"><div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+
+            if (!profile) return (
+                <div className="h-screen flex items-center justify-center p-6 bg-[#020202]">
+                    <div className="w-full max-w-sm fade-up">
+                        <h1 className="text-5xl font-black italic syncopate text-center mb-8">auraM</h1>
+                        <form onSubmit={handleAuth} className="bg-[#0a0a0a] p-8 rounded-[2rem] border border-white/5 space-y-4">
+                            {authMode === 'register' && <input required placeholder="Имя" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, name: e.target.value})} />}
+                            <input required placeholder="ID" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, username: e.target.value})} />
+                            <input required type="password" placeholder="Пароль" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, password: e.target.value})} />
+                            <button className="w-full py-4 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-all uppercase tracking-widest">{authMode === 'login' ? 'Войти' : 'Создать'}</button>
+                            <p onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-center text-[10px] text-indigo-400 cursor-pointer uppercase font-bold tracking-tighter">Сменить режим</p>
+                        </form>
                     </div>
-                );
-            }
+                </div>
+            );
 
             return (
-                <div className="fixed inset-0 flex bg-[#020202] text-white overflow-hidden font-sans">
-                    {/* Боковая панель (меньше по размеру) */}
-                    <aside className={`absolute inset-0 z-30 w-full lg:relative lg:w-[360px] glass-panel flex flex-col transition-transform duration-500 ${activeChat ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
-                        <header className="h-24 flex items-center px-6 space-x-4 shrink-0">
-                            <button onClick={() => setSettingsOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-2xl aura-card hover:bg-white/10 transition-all">
-                                <i data-lucide="menu" className="w-5 h-5 text-indigo-400"></i>
-                            </button>
-                            <div className="flex-1 relative">
-                                <input 
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Найти ID..." 
-                                    className="w-full py-3 px-10 rounded-2xl bg-white/5 border border-white/5 focus:border-indigo-500/50 outline-none transition-all" 
-                                />
-                                <i data-lucide="search" className="absolute left-4 top-3 w-4 h-4 text-gray-500"></i>
-                                {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>}
-                            </div>
+                <div className="fixed inset-0 flex bg-[#020202] text-white overflow-hidden">
+                    <aside className={`absolute inset-0 z-30 w-full lg:relative lg:w-[360px] glass-panel flex flex-col transition-all ${activeChat ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
+                        <header className="h-20 flex items-center px-6 space-x-4">
+                            <button onClick={() => setSettingsOpen(true)} className="w-10 h-10 aura-card rounded-xl flex items-center justify-center"><i data-lucide="menu" className="w-5 h-5 text-indigo-500"></i></button>
+                            <input placeholder="Поиск ID..." className="flex-1 bg-white/5 p-2 rounded-lg text-xs outline-none" onChange={e => setSearchQuery(e.target.value)} />
                         </header>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-                           {/* Результаты глобального поиска */}
-                           {searchQuery.length > 0 && (
-                               <div className="mb-4 space-y-1">
-                                   <p className="text-[10px] font-black text-indigo-500 uppercase px-4 mb-2">Найдено в сети</p>
-                                   {searchResults.length > 0 ? searchResults.map(res => (
-                                       <div key={res.id} onClick={() => res.type === 'user' ? startPrivateChat(res) : setActiveChat(res)} className="p-3 flex items-center space-x-3 cursor-pointer rounded-2xl bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-all fade-up">
-                                           <img src={res.avatar || res.image} className="w-10 h-10 rounded-xl object-cover" />
-                                           <div className="flex-1 min-w-0">
-                                               <h4 className="font-bold text-xs truncate">{res.name}</h4>
-                                               <p className="text-[9px] text-gray-500 uppercase">{res.type === 'user' ? `@${res.id}` : 'Channel'}</p>
-                                           </div>
-                                           <i data-lucide="plus-circle" className="w-4 h-4 text-indigo-400"></i>
-                                       </div>
-                                   )) : <p className="text-[10px] text-gray-600 px-4">Ничего не найдено</p>}
-                                   <div className="h-px bg-white/5 my-4 mx-4"></div>
-                               </div>
-                           )}
-
-                           {/* Глобальный хаб */}
-                           <div onClick={() => setActiveChat({ id: 'global', name: 'Global Hub', isPublic: true, image: 'https://ui-avatars.com/api/?name=GH&background=6366f1&color=fff' })} className={`p-3 flex items-center space-x-4 cursor-pointer rounded-2xl transition-all ${activeChat?.id === 'global' ? 'bg-indigo-600/15 border border-indigo-500/20' : 'hover:bg-white/5'}`}>
-                              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg"><i data-lucide="globe" className="w-6 h-6"></i></div>
-                              <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-sm italic">Global Hub</h4>
-                                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5 opacity-50">Community Node</p>
-                              </div>
-                           </div>
-
-                           {/* Список активных чатов */}
-                           {chats.map(chat => (
-                             <div key={chat.id} onClick={() => setActiveChat(chat)} className={`p-3 flex items-center space-x-4 cursor-pointer rounded-2xl transition-all ${activeChat?.id === chat.id ? 'bg-indigo-600/15 border border-indigo-500/20' : 'hover:bg-white/5'}`}>
-                                <img src={chat.image} className="w-12 h-12 rounded-xl object-cover shadow-md" />
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm truncate">{chat.name}</h4>
-                                    <p className="text-[9px] text-gray-500 font-bold mt-0.5 uppercase tracking-tighter opacity-50">Secure Link</p>
+                        <div className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar">
+                            <div onClick={() => setActiveChat({id:'global', name:'Global Hub', image:'https://ui-avatars.com/api/?name=GH&background=6366f1&color=fff'})} className="p-3 bg-indigo-600/10 rounded-xl cursor-pointer border border-indigo-500/20 flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center"><i data-lucide="globe" className="w-5 h-5"></i></div>
+                                <div><h4 className="text-sm font-bold">Global Hub</h4><p className="text-[8px] text-indigo-400 uppercase">Public Node</p></div>
+                            </div>
+                            {chats.map(c => (
+                                <div key={c.id} onClick={() => setActiveChat(c)} className="p-3 hover:bg-white/5 rounded-xl cursor-pointer flex items-center space-x-3 transition-all">
+                                    <img src={c.image} className="w-10 h-10 rounded-lg object-cover" />
+                                    <h4 className="text-sm font-medium">{c.name}</h4>
                                 </div>
-                             </div>
-                           ))}
+                            ))}
                         </div>
                     </aside>
 
-                    {/* Основная область чата */}
-                    <main className="flex-1 flex flex-col relative bg-[#020202]">
+                    <main className="flex-1 flex flex-col relative">
                         {activeChat ? (
                             <>
-                                <header className="h-24 flex items-center px-6 justify-between border-b border-white/5 backdrop-blur-3xl bg-[#020202]/80 shrink-0">
-                                    <div className="flex items-center space-x-4 overflow-hidden">
-                                        <button onClick={() => setActiveChat(null)} className="lg:hidden p-2 aura-card rounded-xl text-indigo-400"><i data-lucide="chevron-left" className="w-5 h-5"></i></button>
-                                        <img src={activeChat.image} className="w-12 h-12 rounded-xl object-cover border border-indigo-500/20" />
-                                        <div className="min-w-0">
-                                            <h2 className="text-base font-black italic truncate">{activeChat.name}</h2>
-                                            <div className="flex items-center space-x-2">
-                                                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_#6366f1]"></div>
-                                                <span className="text-[9px] text-indigo-400 font-black uppercase tracking-widest">Active Connection</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <button className="w-10 h-10 flex items-center justify-center rounded-xl aura-card text-gray-500 hover:text-white transition-all"><i data-lucide="phone" className="w-4 h-4"></i></button>
-                                        <button className="w-10 h-10 flex items-center justify-center rounded-xl aura-card text-gray-500 hover:text-white transition-all"><i data-lucide="video" className="w-4 h-4"></i></button>
-                                    </div>
+                                <header className="h-20 flex items-center px-6 border-b border-white/5 space-x-4">
+                                    <button onClick={() => setActiveChat(null)} className="lg:hidden p-2 text-indigo-500"><i data-lucide="chevron-left"></i></button>
+                                    <img src={activeChat.image} className="w-10 h-10 rounded-lg" />
+                                    <h2 className="font-bold">{activeChat.name}</h2>
                                 </header>
-
                                 <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                                     {messages.map(m => (
-                                        <div key={m.id} className={`flex ${m.senderId === profile.id ? 'justify-end' : 'justify-start'} fade-up`}>
-                                            <div className={`max-w-[80%] p-4 rounded-3xl shadow-lg ${m.senderId === profile.id ? 'msg-out' : 'aura-card'}`}>
-                                                {m.senderId !== profile.id && <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">{m.senderName}</p>}
-                                                <p className="text-sm font-medium leading-relaxed">{m.content}</p>
-                                                <p className="text-[8px] opacity-30 text-right mt-1 font-bold">{new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                                        <div key={m.id} className={`flex ${m.senderId === profile.id ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`p-3 px-4 rounded-2xl max-w-[80%] ${m.senderId === profile.id ? 'msg-out' : 'aura-card'}`}>
+                                                <p className="text-sm">{m.content}</p>
                                             </div>
                                         </div>
                                     ))}
                                     <div ref={messagesEndRef} />
                                 </div>
-
-                                <footer className="p-6 shrink-0">
-                                    <div className="max-w-4xl mx-auto flex items-center space-x-3">
-                                        <div className="flex-1 aura-card rounded-2xl flex items-center px-4 border border-white/5 shadow-xl focus-within:border-indigo-500/50 transition-all">
-                                            <button className="p-2 text-gray-500 hover:text-indigo-400 transition-colors"><i data-lucide="image" className="w-5 h-5"></i></button>
-                                            <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Введите данные..." className="flex-1 bg-transparent py-4 outline-none font-medium" />
-                                        </div>
-                                        <button onClick={onSend} className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 active:scale-90 transition-all"><i data-lucide="send" className="w-5 h-5 text-white"></i></button>
+                                <footer className="p-6">
+                                    <div className="flex space-x-2">
+                                        <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (async () => {
+                                            if (!inputText.trim()) return;
+                                            await window.FB.addDoc(window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'messages'), { chatId: activeChat.id, senderId: profile.id, content: inputText, timestamp: Date.now() });
+                                            setInputText('');
+                                        })()} placeholder="Сообщение..." className="flex-1 bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" />
+                                        <button className="w-14 bg-indigo-600 rounded-xl flex items-center justify-center"><i data-lucide="send"></i></button>
                                     </div>
                                 </footer>
                             </>
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-                                <div className="w-32 h-32 aura-card rounded-[2.5rem] flex items-center justify-center mb-8 border border-white/5"><i data-lucide="sparkles" className="w-12 h-12 text-indigo-600/20"></i></div>
-                                <h2 className="text-2xl font-black italic mb-2 syncopate">Выберите Узел</h2>
-                                <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em]">Ожидание подключения к сети auraM...</p>
-                            </div>
+                            <div className="flex-1 flex flex-col items-center justify-center opacity-20"><i data-lucide="sparkles" className="w-20 h-20 mb-4"></i><p className="syncopate italic">auraM Connected</p></div>
                         )}
                     </main>
 
-                    {/* Меню настроек */}
                     {settingsOpen && (
                         <div className="fixed inset-0 z-[100] flex">
-                            <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setSettingsOpen(false)} />
-                            <div className="relative w-full max-w-xs h-full bg-[#080808] border-r border-white/5 p-8 flex flex-col shadow-2xl fade-up">
-                                <div className="text-center mb-10">
-                                    <img src={profile.avatar} className="w-20 h-20 mx-auto rounded-3xl mb-4 border-2 border-indigo-600/20 shadow-xl" />
-                                    <h3 className="text-lg font-black italic">{profile.name}</h3>
-                                    <p className="text-indigo-400 text-[9px] font-black uppercase tracking-widest mt-1">Verified Node</p>
-                                </div>
-                                
-                                <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
-                                    <p className="text-[9px] font-black text-gray-500 uppercase px-2">Account Links</p>
-                                    {localAccounts.map(acc => (
-                                        <div key={acc.id} onClick={() => { if(acc.id !== profile.id) { setProfile(acc); setSettingsOpen(false); localStorage.setItem('auram_active_id', acc.id); }}} className={`p-4 rounded-2xl border transition-all flex items-center space-x-3 cursor-pointer ${acc.id === profile.id ? 'bg-indigo-600/10 border-indigo-500/20' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
-                                            <img src={acc.avatar} className="w-8 h-8 rounded-lg" />
-                                            <div className="flex-1"><p className="font-bold text-xs truncate">{acc.name}</p></div>
-                                            {acc.id === profile.id && <i data-lucide="shield-check" className="w-4 h-4 text-indigo-500"></i>}
-                                        </div>
-                                    ))}
-                                    <button onClick={() => { localStorage.removeItem('auram_active_id'); setProfile(null); setSettingsOpen(false); }} className="w-full p-4 aura-card rounded-2xl flex items-center space-x-3 text-indigo-400 hover:bg-indigo-600/10 transition-all font-black text-[10px] uppercase">
-                                        <i data-lucide="plus" className="w-4 h-4"></i> <span>Add Node</span>
-                                    </button>
-                                </div>
-
-                                <button onClick={() => { localStorage.removeItem('auram_active_id'); setProfile(null); setSettingsOpen(false); }} className="p-4 aura-card rounded-2xl flex items-center space-x-3 text-red-400 hover:bg-red-400/5 transition-all mt-4">
-                                    <i data-lucide="log-out" className="w-4 h-4"></i> <span className="font-black text-[10px] uppercase">Exit</span>
-                                </button>
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setSettingsOpen(false)} />
+                            <div className="relative w-64 h-full bg-[#080808] border-r border-white/5 p-6 fade-up">
+                                <img src={profile.avatar} className="w-16 h-16 rounded-2xl mb-4" />
+                                <h3 className="font-bold">{profile.name}</h3>
+                                <p className="text-[10px] text-indigo-400 mb-8">@{profile.id}</p>
+                                <button onClick={() => { localStorage.clear(); location.reload(); }} className="text-red-500 text-xs font-bold uppercase">Выйти</button>
                             </div>
                         </div>
                     )}
@@ -436,8 +228,8 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
+
