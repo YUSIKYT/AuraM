@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<title>be1.ru</title>
+</head>
+<body>
+<p>import React, { useState, useEffect, useRef } from &#39;react&#39;;<br />
+import { initializeApp } from &#39;firebase/app&#39;;<br />
+import {&nbsp;<br />
+&nbsp; getAuth,&nbsp;<br />
+&nbsp; signInAnonymously,&nbsp;<br />
+&nbsp; signInWithCustomToken,&nbsp;<br />
+&nbsp; onAuthStateChanged&nbsp;<br />
+} from &#39;firebase/auth&#39;;<br />
+import {&nbsp;<br />
+&nbsp; getFirestore,&nbsp;<br />
+&nbsp; collection,&nbsp;<br />
+&nbsp; doc,&nbsp;<br />
+&nbsp; setDoc,&nbsp;<br />
+&nbsp; getDoc,&nbsp;<br />
+&nbsp; onSnapshot,&nbsp;<br />
+&nbsp; addDoc,&nbsp;<br />
+&nbsp; query,&nbsp;<br />
+&nbsp; getDocs<br />
+} from &#39;firebase/firestore&#39;;<br />
+import {&nbsp;<br />
+&nbsp; Send, Menu, Search, Phone, Video, MoreVertical,&nbsp;<br />
+&nbsp; ChevronLeft, Plus, Sparkles, Image as ImageIcon,&nbsp;<br />
+&nbsp; Globe, LogOut, Languages, Moon, Smile, UserPlus,<br />
+&nbsp; ShieldCheck, Zap, Activity<br />
+} from &#39;lucide-react&#39;;</p>
+
+<p>// --- Firebase Configuration ---<br />
+const firebaseConfig = JSON.parse(__firebase_config);<br />
+const app = initializeApp(firebaseConfig);<br />
+const auth = getAuth(app);<br />
+const db = getFirestore(app);<br />
+const appId = typeof __app_id !== &#39;undefined&#39; ? __app_id : &#39;auram-messenger&#39;;</p>
+
+<p>export default function App() {<br />
+&nbsp; const [user, setUser] = useState(null);<br />
+&nbsp; const [profile, setProfile] = useState(null);<br />
+&nbsp; const [loading, setLoading] = useState(true);<br />
+&nbsp; const [authMode, setAuthMode] = useState(&#39;login&#39;);&nbsp;<br />
+&nbsp; const [form, setForm] = useState({ username: &#39;&#39;, password: &#39;&#39;, name: &#39;&#39; });<br />
+&nbsp; const [authError, setAuthError] = useState(&#39;&#39;);<br />
+&nbsp;&nbsp;<br />
+&nbsp; const [chats, setChats] = useState([]);<br />
+&nbsp; const [activeChat, setActiveChat] = useState(null);<br />
+&nbsp; const [messages, setMessages] = useState([]);<br />
+&nbsp; const [inputText, setInputText] = useState(&#39;&#39;);<br />
+&nbsp; const [searchQuery, setSearchQuery] = useState(&#39;&#39;);<br />
+&nbsp; const [searchResults, setSearchResults] = useState([]);<br />
+&nbsp; const [settingsOpen, setSettingsOpen] = useState(false);<br />
+&nbsp; const [localAccounts, setLocalAccounts] = useState([]);</p>
+
+<p>&nbsp; const messagesEndRef = useRef(null);</p>
+
+<p>&nbsp; // --- Auth &amp; Session ---<br />
+&nbsp; useEffect(() =&gt; {<br />
+&nbsp; &nbsp; const initAuth = async () =&gt; {<br />
+&nbsp; &nbsp; &nbsp; if (typeof __initial_auth_token !== &#39;undefined&#39; &amp;&amp; __initial_auth_token) {<br />
+&nbsp; &nbsp; &nbsp; &nbsp; await signInWithCustomToken(auth, __initial_auth_token);<br />
+&nbsp; &nbsp; &nbsp; } else {<br />
+&nbsp; &nbsp; &nbsp; &nbsp; await signInAnonymously(auth);<br />
+&nbsp; &nbsp; &nbsp; }<br />
+&nbsp; &nbsp; };<br />
+&nbsp; &nbsp; initAuth();</p>
+
+<p>&nbsp; &nbsp; const unsubscribe = onAuthStateChanged(auth, (u) =&gt; {<br />
+&nbsp; &nbsp; &nbsp; setUser(u);<br />
+&nbsp; &nbsp; &nbsp; setLoading(false);<br />
+&nbsp; &nbsp; });</p>
+
+<p>&nbsp; &nbsp; const saved = JSON.parse(localStorage.getItem(&#39;auram_accounts_final&#39;) || &#39;[]&#39;);<br />
+&nbsp; &nbsp; setLocalAccounts(saved);</p>
+
+<p>&nbsp; &nbsp; const activeId = localStorage.getItem(&#39;auram_active_id&#39;);<br />
+&nbsp; &nbsp; if (activeId) fetchProfile(activeId);</p>
+
+<p>&nbsp; &nbsp; return () =&gt; unsubscribe();<br />
+&nbsp; }, []);</p>
+
+<p>&nbsp; const fetchProfile = async (id) =&gt; {<br />
+&nbsp; &nbsp; const snap = await getDoc(doc(db, &#39;artifacts&#39;, appId, &#39;public&#39;, &#39;data&#39;, &#39;users&#39;, id));<br />
+&nbsp; &nbsp; if (snap.exists()) setProfile(snap.data());<br />
+&nbsp; };</p>
+
+<p>&nbsp; const handleAuthSubmit = async (e) =&gt; {<br />
+&nbsp; &nbsp; e.preventDefault();<br />
+&nbsp; &nbsp; setAuthError(&#39;&#39;);<br />
+&nbsp; &nbsp; const id = form.username.toLowerCase().trim();<br />
+&nbsp; &nbsp; if (!id) return;</p>
+
+<p>&nbsp; &nbsp; const userRef = doc(db, &#39;artifacts&#39;, appId, &#39;public&#39;, &#39;data&#39;, &#39;users&#39;, id);</p>
+
+<p>&nbsp; &nbsp; if (authMode === &#39;register&#39;) {<br />
+&nbsp; &nbsp; &nbsp; const snap = await getDoc(userRef);<br />
+&nbsp; &nbsp; &nbsp; if (snap.exists()) return setAuthError(&#39;ID уже занят&#39;);<br />
+&nbsp; &nbsp; &nbsp; const newAcc = {<br />
+&nbsp; &nbsp; &nbsp; &nbsp; id, name: form.name, username: id, password: form.password,<br />
+&nbsp; &nbsp; &nbsp; &nbsp; avatar: `https://ui-avatars.com/api/?name=${form.name}&amp;background=6366f1&amp;color=fff`,<br />
+&nbsp; &nbsp; &nbsp; &nbsp; createdAt: Date.now()<br />
+&nbsp; &nbsp; &nbsp; };<br />
+&nbsp; &nbsp; &nbsp; await setDoc(userRef, newAcc);<br />
+&nbsp; &nbsp; &nbsp; updateLocalList(newAcc);<br />
+&nbsp; &nbsp; &nbsp; setProfile(newAcc);<br />
+&nbsp; &nbsp; } else {<br />
+&nbsp; &nbsp; &nbsp; const snap = await getDoc(userRef);<br />
+&nbsp; &nbsp; &nbsp; if (!snap.exists() || snap.data().password !== form.password) return setAuthError(&#39;Ошибка доступа&#39;);<br />
+&nbsp; &nbsp; &nbsp; updateLocalList(snap.data());<br />
+&nbsp; &nbsp; &nbsp; setProfile(snap.data());<br />
+&nbsp; &nbsp; }<br />
+&nbsp; };</p>
+
+<p>&nbsp; const updateLocalList = (acc) =&gt; {<br />
+&nbsp; &nbsp; const saved = JSON.parse(localStorage.getItem(&#39;auram_accounts_final&#39;) || &#39;[]&#39;);<br />
+&nbsp; &nbsp; const filtered = saved.filter(a =&gt; a.id !== acc.id);<br />
+&nbsp; &nbsp; const newList = [...filtered, acc];<br />
+&nbsp; &nbsp; setLocalAccounts(newList);<br />
+&nbsp; &nbsp; localStorage.setItem(&#39;auram_accounts_final&#39;, JSON.stringify(newList));<br />
+&nbsp; &nbsp; localStorage.setItem(&#39;auram_active_id&#39;, acc.id);<br />
+&nbsp; };</p>
+
+<p>&nbsp; // --- Chat Logic ---<br />
+&nbsp; useEffect(() =&gt; {<br />
+&nbsp; &nbsp; if (!profile) return;<br />
+&nbsp; &nbsp; return onSnapshot(collection(db, &#39;artifacts&#39;, appId, &#39;public&#39;, &#39;data&#39;, &#39;chats&#39;), (snap) =&gt; {<br />
+&nbsp; &nbsp; &nbsp; const all = snap.docs.map(d =&gt; ({ id: d.id, ...d.data() }));<br />
+&nbsp; &nbsp; &nbsp; setChats(all.filter(c =&gt; c.members?.includes(profile.id) || c.isPublic));<br />
+&nbsp; &nbsp; });<br />
+&nbsp; }, [profile]);</p>
+
+<p>&nbsp; useEffect(() =&gt; {<br />
+&nbsp; &nbsp; if (!activeChat) return;<br />
+&nbsp; &nbsp; const q = collection(db, &#39;artifacts&#39;, appId, &#39;public&#39;, &#39;data&#39;, &#39;messages&#39;);<br />
+&nbsp; &nbsp; return onSnapshot(q, (snap) =&gt; {<br />
+&nbsp; &nbsp; &nbsp; const filtered = snap.docs<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .map(d =&gt; ({ id: d.id, ...d.data() }))<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .filter(m =&gt; m.chatId === activeChat.id)<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .sort((a, b) =&gt; a.timestamp - b.timestamp);<br />
+&nbsp; &nbsp; &nbsp; setMessages(filtered);<br />
+&nbsp; &nbsp; });<br />
+&nbsp; }, [activeChat]);</p>
+
+<p>&nbsp; useEffect(() =&gt; { messagesEndRef.current?.scrollIntoView({ behavior: &#39;smooth&#39; }); }, [messages]);</p>
+
+<p>&nbsp; const onSend = async () =&gt; {<br />
+&nbsp; &nbsp; if (!inputText.trim() || !activeChat) return;<br />
+&nbsp; &nbsp; await addDoc(collection(db, &#39;artifacts&#39;, appId, &#39;public&#39;, &#39;data&#39;, &#39;messages&#39;), {<br />
+&nbsp; &nbsp; &nbsp; chatId: activeChat.id, senderId: profile.id, senderName: profile.name,<br />
+&nbsp; &nbsp; &nbsp; content: inputText, timestamp: Date.now()<br />
+&nbsp; &nbsp; });<br />
+&nbsp; &nbsp; setInputText(&#39;&#39;);<br />
+&nbsp; };</p>
+
+<p>&nbsp; if (loading) return &lt;div className=&quot;h-screen bg-[#050505] flex items-center justify-center&quot;&gt;&lt;Zap className=&quot;text-indigo-500 animate-pulse&quot; size={40} /&gt;&lt;/div&gt;;</p>
+
+<p>&nbsp; if (!profile) {<br />
+&nbsp; &nbsp; return (<br />
+&nbsp; &nbsp; &nbsp; &lt;div className=&quot;fixed inset-0 bg-[#050505] text-white flex items-center justify-center p-6&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none overflow-hidden&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600 rounded-full blur-[150px]&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[150px]&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;w-full max-w-md z-10&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;inline-block p-5 bg-indigo-600 rounded-[2.5rem] shadow-2xl mb-6 shadow-indigo-500/40&quot;&gt;&lt;Sparkles size={40} /&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;h1 className=&quot;text-7xl font-black italic tracking-tighter&quot;&gt;auraM&lt;/h1&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;p className=&quot;text-indigo-400 font-bold uppercase tracking-[0.5em] text-[10px] mt-3&quot;&gt;Advanced Ecosystem&lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;form onSubmit={handleAuthSubmit} className=&quot;bg-white/5 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/10 shadow-2xl space-y-5&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {authMode === &#39;register&#39; &amp;&amp; &lt;input required placeholder=&quot;Имя&quot; className=&quot;w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all&quot; onChange={e =&gt; setForm({...form, name: e.target.value})} /&gt;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;input required placeholder=&quot;ID пользователя&quot; className=&quot;w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all&quot; onChange={e =&gt; setForm({...form, username: e.target.value})} /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;input required type=&quot;password&quot; placeholder=&quot;Пароль&quot; className=&quot;w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all&quot; onChange={e =&gt; setForm({...form, password: e.target.value})} /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {authError &amp;&amp; &lt;p className=&quot;text-red-400 text-xs text-center font-bold&quot;&gt;{authError}&lt;/p&gt;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;w-full py-5 bg-indigo-600 rounded-2xl font-black text-xl hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 active:scale-95&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {authMode === &#39;login&#39; ? &#39;Войти&#39; : &#39;Создать&#39;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/form&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;p onClick={() =&gt; setAuthMode(authMode === &#39;login&#39; ? &#39;register&#39; : &#39;login&#39;)} className=&quot;text-center mt-8 text-[11px] font-black text-indigo-400 uppercase tracking-widest cursor-pointer hover:text-white transition-all&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {authMode === &#39;login&#39; ? &#39;Новый аккаунт&#39; : &#39;Уже есть профиль&#39;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; );<br />
+&nbsp; }</p>
+
+<p>&nbsp; return (<br />
+&nbsp; &nbsp; &lt;div className=&quot;fixed inset-0 flex bg-[#050505] text-white overflow-hidden font-sans&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &lt;style&gt;{`<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .glass-panel { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(30px); border-right: 1px solid rgba(255, 255, 255, 0.05); }<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .aura-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .custom-scrollbar::-webkit-scrollbar { width: 3px; }<br />
+&nbsp; &nbsp; &nbsp; &nbsp; .custom-scrollbar::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }<br />
+&nbsp; &nbsp; &nbsp; `}&lt;/style&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; {/* Sidebar */}<br />
+&nbsp; &nbsp; &nbsp; &lt;aside className={`absolute inset-0 z-30 w-full lg:relative lg:w-[420px] glass-panel flex flex-col transition-transform duration-500 ${activeChat ? &#39;-translate-x-full lg:translate-x-0&#39; : &#39;translate-x-0&#39;}`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;header className=&quot;h-28 flex items-center px-8 space-x-5 shrink-0&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button onClick={() =&gt; setSettingsOpen(true)} className=&quot;w-14 h-14 flex items-center justify-center rounded-[1.5rem] aura-card hover:bg-white/10 transition-all relative&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;Menu className=&quot;text-indigo-400&quot; size={24}/&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;span className=&quot;absolute top-3 right-3 w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_#6366f1] animate-pulse&quot;&gt;&lt;/span&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 relative group&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;input placeholder=&quot;Поиск auraM...&quot; className=&quot;w-full py-4 px-14 rounded-3xl bg-white/5 border border-white/5 focus:border-indigo-500/50 outline-none text-sm transition-all&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;Search className=&quot;absolute left-5 top-4.5 w-5 h-5 text-gray-500 group-focus-within:text-indigo-500 transition-colors&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;/header&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 overflow-y-auto custom-scrollbar px-4 space-y-2&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;div onClick={() =&gt; setActiveChat({ id: &#39;global&#39;, name: &#39;Global Hub&#39;, isPublic: true, image: &#39;https://ui-avatars.com/api/?name=GH&amp;background=6366f1&amp;color=fff&#39; })} className={`p-5 flex items-center space-x-5 cursor-pointer rounded-[2.5rem] transition-all ${activeChat?.id === &#39;global&#39; ? &#39;bg-indigo-600/15&#39; : &#39;hover:bg-white/5&#39;}`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;w-20 h-20 rounded-[2rem] bg-indigo-600 flex items-center justify-center shadow-2xl&quot;&gt;&lt;Globe size={32} /&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 min-w-0&quot;&gt;&lt;h4 className=&quot;font-black text-base italic&quot;&gt;Global Hub&lt;/h4&gt;&lt;p className=&quot;text-xs text-gray-500 font-bold uppercase tracking-widest mt-1 opacity-50&quot;&gt;Community Node&lt;/p&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{chats.map(chat =&gt; (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;div key={chat.id} onClick={() =&gt; setActiveChat(chat)} className={`p-5 flex items-center space-x-5 cursor-pointer rounded-[2.5rem] transition-all ${activeChat?.id === chat.id ? &#39;bg-indigo-600/15&#39; : &#39;hover:bg-white/5&#39;}`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;img src={chat.image} className=&quot;w-20 h-20 rounded-[2rem] object-cover shadow-xl&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 min-w-0&quot;&gt;&lt;h4 className=&quot;font-black text-base&quot;&gt;{chat.name}&lt;/h4&gt;&lt;p className=&quot;text-xs text-gray-500 font-bold mt-1&quot;&gt;Status: Active&lt;/p&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;))}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &lt;/aside&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; {/* Main Area */}<br />
+&nbsp; &nbsp; &nbsp; &lt;main className=&quot;flex-1 flex flex-col relative bg-[#050505]&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; {activeChat ? (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;header className=&quot;h-28 flex items-center px-8 justify-between border-b border-white/5 backdrop-blur-3xl bg-[#050505]/50 shrink-0&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex items-center space-x-5 overflow-hidden&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button onClick={() =&gt; setActiveChat(null)} className=&quot;lg:hidden p-3 aura-card rounded-2xl text-indigo-400&quot;&gt;&lt;ChevronLeft/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;img src={activeChat.image} className=&quot;w-16 h-16 rounded-[1.5rem] object-cover border-2 border-indigo-500/20 shadow-2xl&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;min-w-0&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;h2 className=&quot;text-xl font-black italic truncate&quot;&gt;{activeChat.name}&lt;/h2&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex items-center space-x-2 mt-1&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;w-2 h-2 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_#6366f1]&quot;&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;span className=&quot;text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em]&quot;&gt;Encrypted Channel&lt;/span&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex items-center space-x-3&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;w-12 h-12 flex items-center justify-center rounded-2xl aura-card text-gray-500 hover:text-white transition-all&quot;&gt;&lt;Phone size={20}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;w-12 h-12 flex items-center justify-center rounded-2xl aura-card text-gray-500 hover:text-white transition-all&quot;&gt;&lt;Video size={20}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;w-12 h-12 flex items-center justify-center rounded-2xl aura-card text-gray-500 hover:text-white transition-all&quot;&gt;&lt;MoreVertical size={20}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/header&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {messages.map(m =&gt; (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div key={m.id} className={`flex ${m.senderId === profile.id ? &#39;justify-end&#39; : &#39;justify-start&#39;} animate-in slide-in-from-bottom-2 duration-300`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className={`max-w-[75%] p-6 rounded-[2.5rem] shadow-2xl ${m.senderId === profile.id ? &#39;bg-indigo-600 rounded-br-none&#39; : &#39;aura-card rounded-bl-none&#39;}`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {m.senderId !== profile.id &amp;&amp; &lt;p className=&quot;text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2&quot;&gt;&lt;Activity size={10}/&gt; {m.senderName}&lt;/p&gt;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;p className=&quot;text-sm font-medium leading-relaxed&quot;&gt;{m.content}&lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;p className=&quot;text-[9px] opacity-30 text-right mt-2 font-bold&quot;&gt;{new Date(m.timestamp).toLocaleTimeString([], {hour:&#39;2-digit&#39;, minute:&#39;2-digit&#39;})}&lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ))}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div ref={messagesEndRef} /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;footer className=&quot;p-8 shrink-0&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;max-w-5xl mx-auto flex items-center space-x-4&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 aura-card rounded-[2.5rem] flex items-center p-2 px-6 border border-white/5 shadow-2xl focus-within:border-indigo-500/50 transition-all&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;p-3 text-gray-500 hover:text-indigo-400 transition-colors&quot;&gt;&lt;ImageIcon size={22}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;input value={inputText} onChange={e =&gt; setInputText(e.target.value)} onKeyDown={e =&gt; e.key === &#39;Enter&#39; &amp;&amp; onSend()} placeholder=&quot;Написать в элитную сеть auraM...&quot; className=&quot;flex-1 bg-transparent py-5 outline-none text-sm font-medium&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button className=&quot;p-3 text-gray-500 hover:text-indigo-400 transition-colors&quot;&gt;&lt;Smile size={22}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button onClick={onSend} className=&quot;w-16 h-16 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-indigo-500/30 hover:bg-indigo-500 active:scale-90 transition-all&quot;&gt;&lt;Send size={26}/&gt;&lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/footer&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; ) : (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 flex flex-col items-center justify-center text-center p-12&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;w-48 h-48 aura-card rounded-[4rem] flex items-center justify-center mb-10 animate-pulse border-2 border-indigo-500/10&quot;&gt;&lt;Sparkles size={80} className=&quot;text-indigo-600/30&quot; /&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;h2 className=&quot;text-4xl font-black italic mb-4&quot;&gt;Выберите узел auraM&lt;/h2&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;p className=&quot;text-gray-500 max-w-sm text-sm font-medium uppercase tracking-widest leading-loose&quot;&gt;Подключитесь к защищенному каналу для начала обмена данными в элитной среде.&lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; )}<br />
+&nbsp; &nbsp; &nbsp; &lt;/main&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; {/* Settings Modal */}<br />
+&nbsp; &nbsp; &nbsp; {settingsOpen &amp;&amp; (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;fixed inset-0 z-[100] flex&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;absolute inset-0 bg-black/90 backdrop-blur-xl animate-in fade-in&quot; onClick={() =&gt; setSettingsOpen(false)} /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;relative w-full max-w-md h-full bg-[#0a0a0a] border-r border-white/5 p-10 flex flex-col animate-in slide-in-from-left duration-500 shadow-2xl shadow-indigo-500/10&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;text-center mb-12 relative&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;div className=&quot;absolute top-0 left-0 w-full h-1 bg-indigo-600 shadow-[0_0_20px_#6366f1] rounded-full&quot;&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;img src={profile.avatar} className=&quot;w-28 h-28 mx-auto rounded-[3rem] mt-10 mb-6 border-4 border-indigo-600/10 shadow-2xl&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;h3 className=&quot;text-2xl font-black italic&quot;&gt;{profile.name}&lt;/h3&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&lt;p className=&quot;text-indigo-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2&quot;&gt;Elite Status: Verified&lt;/p&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1 space-y-4 overflow-y-auto custom-scrollbar&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;h5 className=&quot;text-[10px] font-black text-indigo-400 uppercase tracking-widest px-2 mb-2&quot;&gt;Account Hub&lt;/h5&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {localAccounts.map(acc =&gt; (<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div key={acc.id} onClick={() =&gt; { if(acc.id !== profile.id) { setProfile(acc); setSettingsOpen(false); localStorage.setItem(&#39;auram_active_id&#39;, acc.id); }}} className={`p-5 rounded-[2rem] border transition-all flex items-center space-x-4 cursor-pointer ${acc.id === profile.id ? &#39;bg-indigo-600/10 border-indigo-500/30&#39; : &#39;bg-white/5 border-transparent hover:bg-white/10&#39;}`}&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;img src={acc.avatar} className=&quot;w-12 h-12 rounded-2xl&quot; /&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;div className=&quot;flex-1&quot;&gt;&lt;p className=&quot;font-black text-sm&quot;&gt;{acc.name}&lt;/p&gt;&lt;p className=&quot;text-[10px] text-gray-500 font-bold uppercase tracking-tighter&quot;&gt;ID: {acc.id}&lt;/p&gt;&lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; {acc.id === profile.id &amp;&amp; &lt;ShieldCheck className=&quot;text-indigo-500&quot; size={20} /&gt;}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ))}<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button onClick={() =&gt; { localStorage.removeItem(&#39;auram_active_id&#39;); setProfile(null); setSettingsOpen(false); }} className=&quot;w-full p-5 aura-card rounded-[2rem] flex items-center space-x-4 text-indigo-400 hover:bg-indigo-600/10 transition-all font-black text-xs uppercase tracking-widest&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;Plus size={20}/&gt; &lt;span&gt;Add Node&lt;/span&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;</p>
+
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;button onClick={() =&gt; { localStorage.removeItem(&#39;auram_active_id&#39;); setProfile(null); setSettingsOpen(false); }} className=&quot;p-6 aura-card rounded-[2.5rem] flex items-center space-x-5 text-red-400 hover:bg-red-400/5 transition-all mt-6 active:scale-95&quot;&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;LogOut size={22}/&gt; &lt;span className=&quot;font-black text-xs uppercase tracking-widest&quot;&gt;Terminate Session&lt;/span&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/button&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; &nbsp; &nbsp; )}<br />
+&nbsp; &nbsp; &lt;/div&gt;<br />
+&nbsp; );<br />
+}</p>
+</body>
+</html>
