@@ -2,17 +2,16 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>auraM | Elite Search & Scale</title>
-    <!-- Tailwind CSS -->
+    <!-- Запрет масштабирования для мобильных устройств -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>auraM | Elite Network</title>
+    
+    <!-- Скрипты для работы React и компонентов (CDN совместимы с GitHub Pages) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
@@ -22,10 +21,10 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             overflow: hidden;
+            touch-action: pan-x pan-y;
         }
         .syncopate { font-family: 'Syncopate', sans-serif; }
         
-        /* Изменение 1: Фон менее прозрачный (#0a0a0a вместо rgba) */
         .glass-panel { 
             background: #0a0a0a; 
             backdrop-filter: blur(40px); 
@@ -35,6 +34,11 @@
         .aura-card { 
             background: rgba(255, 255, 255, 0.04); 
             border: 1px solid rgba(255, 255, 255, 0.06); 
+        }
+        
+        /* Предотвращение зума: шрифт 16px для всех полей ввода */
+        input, textarea, select {
+            font-size: 16px !important;
         }
         
         .custom-scrollbar::-webkit-scrollbar { width: 3px; }
@@ -53,17 +57,12 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        /* Эффект свечения */
-        .neon-glow {
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (обязательно для облачного сохранения) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
@@ -75,6 +74,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
+        // Данные конфигурации
         const firebaseConfig = JSON.parse(__firebase_config);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'auram-messenger';
 
@@ -95,7 +95,6 @@
             const [settingsOpen, setSettingsOpen] = useState(false);
             const [localAccounts, setLocalAccounts] = useState([]);
 
-            // Состояния для поиска (Изменение 3)
             const [searchQuery, setSearchQuery] = useState('');
             const [searchResults, setSearchResults] = useState([]);
             const [isSearching, setIsSearching] = useState(false);
@@ -131,7 +130,7 @@
                 if (activeId && window.FB) fetchProfile(activeId, window.FB.getFirestore(window.FB.initializeApp(firebaseConfig)));
             }, []);
 
-            // Поиск пользователей и каналов (Изменение 3)
+            // Логика поиска по ID или Нику
             useEffect(() => {
                 const performSearch = async () => {
                     if (searchQuery.length < 2) {
@@ -140,7 +139,6 @@
                     }
                     setIsSearching(true);
                     try {
-                        // Поиск по пользователям
                         const usersRef = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'users');
                         const uSnap = await window.FB.getDocs(usersRef);
                         const users = uSnap.docs
@@ -150,7 +148,6 @@
                                 u.name.toLowerCase().includes(searchQuery.toLowerCase())
                             );
 
-                        // Поиск по чатам
                         const chatsRef = window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'chats');
                         const cSnap = await window.FB.getDocs(chatsRef);
                         const chatsFound = cSnap.docs
@@ -239,7 +236,7 @@
                         .filter(m => m.chatId === activeChat.id)
                         .sort((a, b) => a.timestamp - b.timestamp);
                     setMessages(filtered);
-                });
+                }, (err) => console.error("Firestore error:", err));
             }, [activeChat, db]);
 
             useEffect(() => { 
@@ -272,13 +269,14 @@
                             </div>
                             <form onSubmit={handleAuthSubmit} className="bg-[#0a0a0a] p-8 rounded-[2.5rem] border border-white/5 space-y-4 shadow-2xl">
                                 {authMode === 'register' && (
-                                    <input required placeholder="Имя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all text-sm" onChange={e => setForm({...form, name: e.target.value})} />
+                                    <input required placeholder="Имя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, name: e.target.value})} />
                                 )}
-                                <input required placeholder="ID пользователя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all text-sm" onChange={e => setForm({...form, username: e.target.value})} />
-                                <input required type="password" placeholder="Пароль" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all text-sm" onChange={e => setForm({...form, password: e.target.value})} />
+                                <input required placeholder="ID пользователя" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, username: e.target.value})} />
+                                <input required type="password" placeholder="Пароль" className="w-full bg-white/5 rounded-2xl py-4 px-6 outline-none border border-white/5 focus:border-indigo-500 transition-all" onChange={e => setForm({...form, password: e.target.value})} />
                                 <button className="w-full py-4 bg-indigo-600 rounded-2xl font-black text-lg hover:bg-indigo-500 active:scale-95 transition-all">
                                     {authMode === 'login' ? 'ВОЙТИ' : 'СОЗДАТЬ'}
                                 </button>
+                                {authError && <p className="text-red-500 text-[10px] text-center font-bold uppercase">{authError}</p>}
                             </form>
                             <p onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-center mt-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest cursor-pointer hover:text-white transition-all">
                                 {authMode === 'login' ? 'Регистрация' : 'Авторизация'}
@@ -290,7 +288,7 @@
 
             return (
                 <div className="fixed inset-0 flex bg-[#020202] text-white overflow-hidden font-sans">
-                    {/* Изменение 2: Sidebar стал уже (360px вместо 420px) */}
+                    {/* Боковая панель (меньше по размеру) */}
                     <aside className={`absolute inset-0 z-30 w-full lg:relative lg:w-[360px] glass-panel flex flex-col transition-transform duration-500 ${activeChat ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
                         <header className="h-24 flex items-center px-6 space-x-4 shrink-0">
                             <button onClick={() => setSettingsOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-2xl aura-card hover:bg-white/10 transition-all">
@@ -301,7 +299,7 @@
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Найти ID..." 
-                                    className="w-full py-3 px-10 rounded-2xl bg-white/5 border border-white/5 focus:border-indigo-500/50 outline-none text-xs transition-all" 
+                                    className="w-full py-3 px-10 rounded-2xl bg-white/5 border border-white/5 focus:border-indigo-500/50 outline-none transition-all" 
                                 />
                                 <i data-lucide="search" className="absolute left-4 top-3 w-4 h-4 text-gray-500"></i>
                                 {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>}
@@ -309,7 +307,7 @@
                         </header>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-                           {/* Результаты поиска (Изменение 3) */}
+                           {/* Результаты глобального поиска */}
                            {searchQuery.length > 0 && (
                                <div className="mb-4 space-y-1">
                                    <p className="text-[10px] font-black text-indigo-500 uppercase px-4 mb-2">Найдено в сети</p>
@@ -327,7 +325,7 @@
                                </div>
                            )}
 
-                           {/* Список чатов (Изменение 2: Элементы стали меньше) */}
+                           {/* Глобальный хаб */}
                            <div onClick={() => setActiveChat({ id: 'global', name: 'Global Hub', isPublic: true, image: 'https://ui-avatars.com/api/?name=GH&background=6366f1&color=fff' })} className={`p-3 flex items-center space-x-4 cursor-pointer rounded-2xl transition-all ${activeChat?.id === 'global' ? 'bg-indigo-600/15 border border-indigo-500/20' : 'hover:bg-white/5'}`}>
                               <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg"><i data-lucide="globe" className="w-6 h-6"></i></div>
                               <div className="flex-1 min-w-0">
@@ -336,6 +334,7 @@
                               </div>
                            </div>
 
+                           {/* Список активных чатов */}
                            {chats.map(chat => (
                              <div key={chat.id} onClick={() => setActiveChat(chat)} className={`p-3 flex items-center space-x-4 cursor-pointer rounded-2xl transition-all ${activeChat?.id === chat.id ? 'bg-indigo-600/15 border border-indigo-500/20' : 'hover:bg-white/5'}`}>
                                 <img src={chat.image} className="w-12 h-12 rounded-xl object-cover shadow-md" />
@@ -348,7 +347,7 @@
                         </div>
                     </aside>
 
-                    {/* Main Area */}
+                    {/* Основная область чата */}
                     <main className="flex-1 flex flex-col relative bg-[#020202]">
                         {activeChat ? (
                             <>
@@ -387,7 +386,7 @@
                                     <div className="max-w-4xl mx-auto flex items-center space-x-3">
                                         <div className="flex-1 aura-card rounded-2xl flex items-center px-4 border border-white/5 shadow-xl focus-within:border-indigo-500/50 transition-all">
                                             <button className="p-2 text-gray-500 hover:text-indigo-400 transition-colors"><i data-lucide="image" className="w-5 h-5"></i></button>
-                                            <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Введите данные..." className="flex-1 bg-transparent py-4 outline-none text-sm font-medium" />
+                                            <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Введите данные..." className="flex-1 bg-transparent py-4 outline-none font-medium" />
                                         </div>
                                         <button onClick={onSend} className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 active:scale-90 transition-all"><i data-lucide="send" className="w-5 h-5 text-white"></i></button>
                                     </div>
@@ -402,7 +401,7 @@
                         )}
                     </main>
 
-                    {/* Settings Modal (Изменение 1: Фон стал плотнее) */}
+                    {/* Меню настроек */}
                     {settingsOpen && (
                         <div className="fixed inset-0 z-[100] flex">
                             <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setSettingsOpen(false)} />
@@ -442,4 +441,3 @@
     </script>
 </body>
 </html>
-
