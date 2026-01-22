@@ -2,234 +2,212 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>auraM | Final Fixed</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Store Global | Premium Data</title>
     <style>
-        body { background-color: #020202; color: #ffffff; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; touch-action: pan-x pan-y; }
-        .syncopate { font-family: 'Syncopate', sans-serif; }
-        .glass-panel { background: #0a0a0a; backdrop-filter: blur(40px); border-right: 1px solid rgba(255, 255, 255, 0.05); }
-        .aura-card { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); }
-        input { font-size: 16px !important; }
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-        .msg-out { background: #6366f1; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2); }
-        .fade-up { animation: fadeUp 0.4s ease-out forwards; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        :root {
+            --bg: #050505;
+            --card-bg: #121214;
+            --accent: #00f2ff;
+            --accent-hover: #70ffff;
+            --text: #ffffff;
+            --subtext: #88888d;
+            --glass: rgba(255, 255, 255, 0.03);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 0;
+            animation: fadeIn 1s ease-out;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .subtitle {
+            color: var(--subtext);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding-bottom: 100px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .card:hover {
+            transform: translateY(-12px) scale(1.02);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0, 242, 255, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--glass);
+            padding-bottom: 15px;
+        }
+
+        .info-row {
+            margin-bottom: 15px;
+            cursor: pointer;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: var(--glass);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .info-row:hover {
+            background: rgba(0, 242, 255, 0.05);
+            border-color: rgba(0, 242, 255, 0.3);
+        }
+
+        .info-row:active {
+            transform: scale(0.98);
+        }
+
+        .label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--subtext);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .value {
+            display: block;
+            font-size: 1.05rem;
+            color: #e0e0e0;
+            word-break: break-all;
+        }
+
+        /* Toast уведомление */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            display: none;
+            z-index: 9999;
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.4);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { bottom: -50px; } to { bottom: 30px; } }
+
+        @media (max-width: 480px) {
+            body { padding: 15px; }
+            .grid { grid-template-columns: 1fr; }
+            h1 { font-size: 2rem; }
+        }
     </style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        window.FB = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, query, getDocs };
-    </script>
+<div class="container">
+    <header>
+        <h1>App Store Regions</h1>
+        <p class="subtitle">Кликните на любое поле для мгновенного копирования</p>
+    </header>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div class="grid" id="mainGrid"></div>
+</div>
 
-        const App = () => {
-            const [db, setDb] = useState(null);
-            const [profile, setProfile] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [configError, setConfigError] = useState(false);
-            
-            // Основные состояния интерфейса
-            const [authMode, setAuthMode] = useState('login');
-            const [form, setForm] = useState({ username: '', password: '', name: '' });
-            const [chats, setChats] = useState([]);
-            const [activeChat, setActiveChat] = useState(null);
-            const [messages, setMessages] = useState([]);
-            const [inputText, setInputText] = useState('');
-            const [searchQuery, setSearchQuery] = useState('');
-            const [searchResults, setSearchResults] = useState([]);
-            const [isSearching, setIsSearching] = useState(false);
-            const [settingsOpen, setSettingsOpen] = useState(false);
-            const messagesEndRef = useRef(null);
+<div id="toast">✅ Скопировано в буфер!</div>
 
-            useEffect(() => {
-                const init = async () => {
-                    try {
-                        // Исправление для GitHub: если переменной нет, берем пустой объект или выводим ошибку
-                        const cfgStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-                        if (!cfgStr) {
-                            setConfigError(true);
-                            setLoading(false);
-                            return;
-                        }
+<script>
+    const data = [
+        { c: "США", f: "🇺🇸", a: "1000 N West St", ci: "Wilmington", s: "Delaware", z: "19801", p: "302 5550144" },
+        { c: "Россия", f: "🇷🇺", a: "ул. Тверская, д. 7", ci: "Москва", s: "-", z: "103375", p: "900 1234567" },
+        { c: "Китай", f: "🇨🇳", a: "1 East Chang'an Ave", ci: "Beijing", s: "-", z: "100006", p: "10 6512221" },
+        { c: "Турция", f: "🇹🇷", a: "Arpacı Hayrettin Sk. No: 3", ci: "Istanbul", s: "Fatih", z: "34000", p: "212 5222515" },
+        { c: "Казахстан", f: "🇰🇿", a: "пр-т. Абая, 48", ci: "Алматы", s: "-", z: "050000", p: "727 1234567" },
+        { c: "Германия", f: "🇩🇪", a: "Friedrichstraße 43", ci: "Berlin", s: "-", z: "10117", p: "30 2096035" },
+        { c: "Великобритания", f: "🇬🇧", a: "221B Baker St", ci: "London", s: "-", z: "NW1 6XE", p: "20 7946095" },
+        { c: "Франция", f: "🇫🇷", a: "128 Rue de Rivoli", ci: "Paris", s: "-", z: "75001", p: "1 4236000" },
+        { c: "Польша", f: "🇵🇱", a: "Nowy Świat 67", ci: "Warszawa", s: "-", z: "00-042", p: "22 1234567" },
+        { c: "Канада", f: "🇨🇦", a: "290 Bremner Blvd", ci: "Toronto", s: "Ontario", z: "M5V 3L9", p: "416 8686969" },
+        { c: "Испания", f: "🇪🇸", a: "Calle de Bailén, s/n", ci: "Madrid", s: "-", z: "28071", p: "915 4200591" },
+        { c: "Италия", f: "🇮🇹", a: "Via del Corso, 184", ci: "Roma", s: "-", z: "00186", p: "06 6992310" },
+        { c: "Япония", f: "🇯🇵", a: "1-7-1 Nagatacho", ci: "Chiyoda-ku", s: "Tokyo", z: "100-0014", p: "3 3581511" },
+        { c: "Южная Корея", f: "🇰🇷", a: "161 Sajik-ro", ci: "Jongno-gu", s: "Seoul", z: "03045", p: "2 7301901" },
+        { c: "Бразилия", f: "🇧🇷", a: "Av. Paulista, 1578", ci: "São Paulo", s: "-", z: "01310-200", p: "11 3149595" },
+        { c: "Австралия", f: "🇦🇺", a: "100 Market St", ci: "Sydney", s: "NSW", z: "2000", p: "2 9231811" },
+        { c: "Грузия", f: "🇬🇪", a: "Shota Rustaveli Ave, 3", ci: "Tbilisi", s: "-", z: "0105", p: "32 2990000" },
+        { c: "Армения", f: "🇦🇲", a: "1 Abovyan St", ci: "Yerevan", s: "-", z: "0001", p: "10 5200001" },
+        { c: "Узбекистан", f: "🇺🇿", a: "ул. Амира Темура, 107", ci: "Ташкент", s: "-", z: "100084", p: "71 2385000" },
+        { c: "Киргизия", f: "🇰🇬", a: "пр. Чуй, 205", ci: "Бишкек", s: "-", z: "720000", p: "312 6600000" }
+    ];
 
-                        const config = JSON.parse(cfgStr);
-                        const appId = typeof __app_id !== 'undefined' ? __app_id : 'auram-app';
-                        window.currentAppId = appId;
+    function copy(text) {
+        navigator.clipboard.writeText(text);
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 1500);
+    }
 
-                        const app = window.FB.initializeApp(config);
-                        const auth = window.FB.getAuth(app);
-                        const _db = window.FB.getFirestore(app);
-                        setDb(_db);
-
-                        await window.FB.signInAnonymously(auth);
-                        window.FB.onAuthStateChanged(auth, (u) => {
-                            const activeId = localStorage.getItem('auram_active_id');
-                            if (activeId) fetchProfile(activeId, _db);
-                            setLoading(false);
-                        });
-                    } catch (e) {
-                        console.error(e);
-                        setConfigError(true);
-                        setLoading(false);
-                    }
-                };
-                init();
-            }, []);
-
-            const fetchProfile = async (id, _db) => {
-                const snap = await window.FB.getDoc(window.FB.doc(_db, 'artifacts', window.currentAppId, 'public', 'data', 'users', id));
-                if (snap.exists()) setProfile(snap.data());
-            };
-
-            const handleAuth = async (e) => {
-                e.preventDefault();
-                const id = form.username.toLowerCase().trim();
-                const userRef = window.FB.doc(db, 'artifacts', window.currentAppId, 'public', 'data', 'users', id);
-                
-                if (authMode === 'register') {
-                    const acc = { id, name: form.name, password: form.password, avatar: `https://ui-avatars.com/api/?name=${form.name}&background=6366f1&color=fff` };
-                    await window.FB.setDoc(userRef, acc);
-                    setProfile(acc);
-                } else {
-                    const snap = await window.FB.getDoc(userRef);
-                    if (snap.exists() && snap.data().password === form.password) setProfile(snap.data());
-                }
-                localStorage.setItem('auram_active_id', id);
-            };
-
-            useEffect(() => {
-                if (!db || !profile) return;
-                return window.FB.onSnapshot(window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'chats'), (snap) => {
-                    setChats(snap.docs.map(d => ({id: d.id, ...d.data()})).filter(c => c.isPublic || c.members?.includes(profile.id)));
-                });
-            }, [db, profile]);
-
-            useEffect(() => {
-                if (!db || !activeChat) return;
-                const q = window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'messages');
-                return window.FB.onSnapshot(q, (snap) => {
-                    setMessages(snap.docs.map(d => ({id: d.id, ...d.data()})).filter(m => m.chatId === activeChat.id).sort((a,b) => a.timestamp - b.timestamp));
-                });
-            }, [db, activeChat]);
-
-            useEffect(() => { 
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                if (window.lucide) window.lucide.createIcons();
-            });
-
-            if (configError) return (
-                <div className="h-screen flex items-center justify-center bg-black p-10 text-center">
-                    <div className="max-w-md">
-                        <h1 className="text-red-500 text-2xl font-bold mb-4">ОШИБКА КОНФИГУРАЦИИ</h1>
-                        <p className="text-gray-400 text-sm">Вы открыли файл напрямую или на GitHub без настройки Firebase. Для работы чата необходимо вставить Firebase Config в код.</p>
-                    </div>
-                </div>
-            );
-
-            if (loading) return <div className="h-screen bg-black flex items-center justify-center"><div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
-
-            if (!profile) return (
-                <div className="h-screen flex items-center justify-center p-6 bg-[#020202]">
-                    <div className="w-full max-w-sm fade-up">
-                        <h1 className="text-5xl font-black italic syncopate text-center mb-8">auraM</h1>
-                        <form onSubmit={handleAuth} className="bg-[#0a0a0a] p-8 rounded-[2rem] border border-white/5 space-y-4">
-                            {authMode === 'register' && <input required placeholder="Имя" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, name: e.target.value})} />}
-                            <input required placeholder="ID" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, username: e.target.value})} />
-                            <input required type="password" placeholder="Пароль" className="w-full bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" onChange={e => setForm({...form, password: e.target.value})} />
-                            <button className="w-full py-4 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-all uppercase tracking-widest">{authMode === 'login' ? 'Войти' : 'Создать'}</button>
-                            <p onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="text-center text-[10px] text-indigo-400 cursor-pointer uppercase font-bold tracking-tighter">Сменить режим</p>
-                        </form>
-                    </div>
-                </div>
-            );
-
-            return (
-                <div className="fixed inset-0 flex bg-[#020202] text-white overflow-hidden">
-                    <aside className={`absolute inset-0 z-30 w-full lg:relative lg:w-[360px] glass-panel flex flex-col transition-all ${activeChat ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
-                        <header className="h-20 flex items-center px-6 space-x-4">
-                            <button onClick={() => setSettingsOpen(true)} className="w-10 h-10 aura-card rounded-xl flex items-center justify-center"><i data-lucide="menu" className="w-5 h-5 text-indigo-500"></i></button>
-                            <input placeholder="Поиск ID..." className="flex-1 bg-white/5 p-2 rounded-lg text-xs outline-none" onChange={e => setSearchQuery(e.target.value)} />
-                        </header>
-                        <div className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar">
-                            <div onClick={() => setActiveChat({id:'global', name:'Global Hub', image:'https://ui-avatars.com/api/?name=GH&background=6366f1&color=fff'})} className="p-3 bg-indigo-600/10 rounded-xl cursor-pointer border border-indigo-500/20 flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center"><i data-lucide="globe" className="w-5 h-5"></i></div>
-                                <div><h4 className="text-sm font-bold">Global Hub</h4><p className="text-[8px] text-indigo-400 uppercase">Public Node</p></div>
-                            </div>
-                            {chats.map(c => (
-                                <div key={c.id} onClick={() => setActiveChat(c)} className="p-3 hover:bg-white/5 rounded-xl cursor-pointer flex items-center space-x-3 transition-all">
-                                    <img src={c.image} className="w-10 h-10 rounded-lg object-cover" />
-                                    <h4 className="text-sm font-medium">{c.name}</h4>
-                                </div>
-                            ))}
-                        </div>
-                    </aside>
-
-                    <main className="flex-1 flex flex-col relative">
-                        {activeChat ? (
-                            <>
-                                <header className="h-20 flex items-center px-6 border-b border-white/5 space-x-4">
-                                    <button onClick={() => setActiveChat(null)} className="lg:hidden p-2 text-indigo-500"><i data-lucide="chevron-left"></i></button>
-                                    <img src={activeChat.image} className="w-10 h-10 rounded-lg" />
-                                    <h2 className="font-bold">{activeChat.name}</h2>
-                                </header>
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                                    {messages.map(m => (
-                                        <div key={m.id} className={`flex ${m.senderId === profile.id ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`p-3 px-4 rounded-2xl max-w-[80%] ${m.senderId === profile.id ? 'msg-out' : 'aura-card'}`}>
-                                                <p className="text-sm">{m.content}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div ref={messagesEndRef} />
-                                </div>
-                                <footer className="p-6">
-                                    <div className="flex space-x-2">
-                                        <input value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (async () => {
-                                            if (!inputText.trim()) return;
-                                            await window.FB.addDoc(window.FB.collection(db, 'artifacts', window.currentAppId, 'public', 'data', 'messages'), { chatId: activeChat.id, senderId: profile.id, content: inputText, timestamp: Date.now() });
-                                            setInputText('');
-                                        })()} placeholder="Сообщение..." className="flex-1 bg-white/5 p-4 rounded-xl outline-none border border-white/5 focus:border-indigo-500" />
-                                        <button className="w-14 bg-indigo-600 rounded-xl flex items-center justify-center"><i data-lucide="send"></i></button>
-                                    </div>
-                                </footer>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center opacity-20"><i data-lucide="sparkles" className="w-20 h-20 mb-4"></i><p className="syncopate italic">auraM Connected</p></div>
-                        )}
-                    </main>
-
-                    {settingsOpen && (
-                        <div className="fixed inset-0 z-[100] flex">
-                            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setSettingsOpen(false)} />
-                            <div className="relative w-64 h-full bg-[#080808] border-r border-white/5 p-6 fade-up">
-                                <img src={profile.avatar} className="w-16 h-16 rounded-2xl mb-4" />
-                                <h3 className="font-bold">{profile.name}</h3>
-                                <p className="text-[10px] text-indigo-400 mb-8">@{profile.id}</p>
-                                <button onClick={() => { localStorage.clear(); location.reload(); }} className="text-red-500 text-xs font-bold uppercase">Выйти</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
+    const grid = document.getElementById('mainGrid');
+    data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <h2>${item.f} ${item.c}</h2>
+            <div class="info-row" onclick="copy('${item.a}')"><span class="label">Улица</span><span class="value">${item.a}</span></div>
+            <div class="info-row" onclick="copy('${item.ci}')"><span class="label">Город</span><span class="value">${item.ci}</span></div>
+            ${item.s !== '-' ? `<div class="info-row" onclick="copy('${item.s}')"><span class="label">Штат</span><span class="value">${item.s}</span></div>` : ''}
+            <div class="info-row" onclick="copy('${item.z}')"><span class="label">Индекс</span><span class="value">${item.z}</span></div>
+            <div class="info-row" onclick="copy('${item.p}')"><span class="label">Телефон</span><span class="value">${item.p}</span></div>
+        `;
+        grid.appendChild(card);
+    });
+</script>
 </body>
 </html>
-
